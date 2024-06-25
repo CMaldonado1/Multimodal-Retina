@@ -1,0 +1,73 @@
+#This is a file to config the parameters
+seed: 1
+ids_set: "/cmaldonado/multimodal_retina/vae_retina_50.csv" #data/non_cvd/ids_vae.csv"
+w_kld : 0.002
+w_bce: 0.5
+
+# Learning Parameters
+optimizer: {
+  algorithm: "Adam",
+  batch_size: 4,
+  parameters: {
+    lr: 0.0001,
+    betas: [0.5, 0.99],
+    weight_decay: 0.000001
+
+  }
+}
+
+
+# OCT
+dir_imgs_oct: "/cmaldonado/multimodal_retina/data/non_cvd/oct_21012/" 
+pretrained_model_oct: "/cmaldonado/oct_3D/src/mlruns/1/252ff166b1b148619f78944d96331852/checkpoints/epoch=48-step=91286.ckpt" 
+
+# Model Parameters
+input_dim_oct: 128 224 224
+
+network_architecture_oct:  {
+    latent_dim: 128,
+    convolution : {
+       parameters : {
+          kernel_size: 3 3 3,
+          padding: 1 1 1,
+          stride: 2 2 2,
+          channels: 1 32 64 128, 
+          activation_function: relu relu relu relu relu relu relu,
+       }
+    }
+}
+
+# FUNDUS
+dir_imgs_fundus: "/cmaldonado/multimodal_retina/data/non_cvd/fundus_21012/"
+pretrained_model_fundus: "/cmaldonado/multimodal_retina/Multimodal-Retina/mlruns/2/7fb3cb89c1774154be729a1289178f5f/checkpoints/epoch=34-step=78224.ckpt"
+
+input_dim_fundus: 3 224 224
+
+network_architecture_fundus:  {
+    latent_dim: 2048,
+    convolution : {
+       parameters : {
+          kernel_size: 3 3,
+          padding: 1 1,
+          stride: 2 2,
+          channels: 3 128 256 512 1024 2048,
+          activation_function: relu relu relu relu relu relu relu,
+       }
+    }
+}
+
+
+mlflow: {
+  pretraining: {
+    run_name: null,
+    experiment_name: "VAE"
+  },
+  classifier_training: {
+    run_name: null,
+    experiment_name: "VAE RETINA"
+  },
+    mcvae_training: {
+     run_name: null,
+     experiment_name: "MCVAE RETINA"
+    }
+ }

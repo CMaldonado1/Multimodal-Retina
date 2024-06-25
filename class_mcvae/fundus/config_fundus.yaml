@@ -1,0 +1,57 @@
+#This is a file to config the parameters
+
+# Seed
+seed: 1
+dir_imgs_ae: "/cmaldonado/multimodal_retina/data/cvd/fundus_21012/" 
+ids_set: "/cmaldonado/multimodal_retina/data/csv/ids_classier_fundus_cvd.csv" 
+ids_set_class: "/cmaldonado//multimodal_retina/ids_classifier_cvds.csv"
+
+pretrained_model: "/cmaldonado/multimodal_retina/Multimodal-Retina/mlruns/2/7fb3cb89c1774154be729a1289178f5f/checkpoints/epoch=34-step=78224.ckpt" 
+
+input_dim: 3 224 224 
+w_bce: 0.5 
+w_kld : 0.002
+
+
+network_architecture:  {
+    latent_dim: 2048,
+    convolution : {
+       parameters : {
+          kernel_size: 3 3,
+          padding: 1 1,
+          stride: 2 2,
+          channels: 3 128 256 512 1024 2048, 
+          activation_function: relu relu relu relu relu relu relu,
+       }
+    }
+}
+
+classifier: {
+   n_classes: 2,
+   nhead: 8,
+   num_encoder_layers: 1 
+}
+
+# Learning Parameters
+
+optimizer: {
+  algorithm: "Adam",
+  batch_size: 4, 
+  parameters: {
+    lr: 0.001,
+    betas: [0.5, 0.99],
+    weight_decay: 0.0000001 
+
+  }
+}
+
+mlflow: {
+  pretraining: {
+    run_name: null,
+    experiment_name: "AE"
+  },
+  classifier_training: {
+    run_name: null,
+    experiment_name: "VAE + Classifier"
+  }
+ }
