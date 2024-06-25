@@ -1,0 +1,65 @@
+#This is a file to config the parameters
+
+# Seed
+seed: 1
+dir_imgs_ae: "/cmaldonado/multimodal_retina/data/non_cvd/oct_21012/" 
+dir_imgs_left: "/cmaldonado/" 
+ids_set: "/cmaldonado/multimodal_retina/ids_ae.csv"
+ids_set_class: "/cmaldonado/be_vae/ids_classifier.xlsx"
+
+pretrained_model: 
+
+
+sample_sizes: {
+  training: 0.6,
+  validation: 0.3,
+  testing: 0.1
+}
+
+# Model Parameters
+
+optimizer: "adam"
+
+input_dim: 128 224 224
+epochs: 5
+w_bce: 0.5 
+n_classes: 2 
+w_kld : 0.002
+
+network_architecture:  {
+    latent_dim: 512,
+    convolution : {
+       parameters : {
+          kernel_size: 3 3 3,
+          padding: 1 1 1,
+          stride: 2 2 2,
+          channels: 1 128 256 512, 
+          activation_function: relu relu relu relu relu relu relu,
+       }
+    }
+}
+
+
+# Learning Parameters
+
+optimizer: {
+  algorithm: "Adam",
+  batch_size: 4, 
+  parameters: {
+    lr: 0.0001,
+    betas: [0.5, 0.99],
+    weight_decay: 0.000001 
+
+  }
+}
+
+mlflow: {
+  pretraining: {
+    run_name: null,
+    experiment_name: "VAE"
+  },
+  classifier_training: {
+    run_name: null,
+    experiment_name: "VAE + Classifier"
+  }
+ }
