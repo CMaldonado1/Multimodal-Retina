@@ -31,12 +31,12 @@ class AE(pl.LightningModule):
      MSE = self.mse(recon_x, x, reduction='mean')
      KLD = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
      loss = MSE + KLD*w_kld
-#     if self.current_epoch % 10 == 0:
-#        if x.size(0) == self.params.optimizer.batch_size:
-#            comparison1, comparison2, comparison3 = self._shared_eval_step(batch, batch_idx)
-#            self.logger.experiment.log_image(image=comparison1, artifact_file="reconstruction1_train{}.png".format(self.current_epoch), run_id=self.logger.run_id)
-#            self.logger.experiment.log_image(image=comparison2, artifact_file="reconstruction2_train{}.png".format(self.current_epoch), run_id=self.logger.run_id)
-#            self.logger.experiment.log_image(image=comparison3, artifact_file="reconstruction3_train{}.png".format(self.current_epoch), run_id=self.logger.run_id)
+     if self.current_epoch % 10 == 0:
+        if x.size(0) == self.params.optimizer.batch_size:
+            comparison1, comparison2, comparison3 = self._shared_eval_step(batch, batch_idx)
+            self.logger.experiment.log_image(image=comparison1, artifact_file="reconstruction1_train{}.png".format(self.current_epoch), run_id=self.logger.run_id)
+            self.logger.experiment.log_image(image=comparison2, artifact_file="reconstruction2_train{}.png".format(self.current_epoch), run_id=self.logger.run_id)
+            self.logger.experiment.log_image(image=comparison3, artifact_file="reconstruction3_train{}.png".format(self.current_epoch), run_id=self.logger.run_id)
      loss_dict = {"MSE_loss": MSE.detach(), "loss": loss, "KLD": KLD*w_kld}
      return loss_dict
 
@@ -63,12 +63,12 @@ class AE(pl.LightningModule):
          KLD = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
          val_loss = MSE + KLD*w_kld 
          loss_dict = {"Total_loss": val_loss.detach(), "MSE_loss": MSE.detach(), "KLD": KLD*w_kld}
-#         if self.current_epoch % 10 == 0:
-#            if x.size(0) == self.params.optimizer.batch_size:
-#               comparison1, comparison2, comparison3 = self._shared_eval_step(batch, batch_idx)
-#               self.logger.experiment.log_image(image=comparison1, artifact_file="reconstruction1_val{}.png".format(self.current_epoch), run_id=self.logger.run_id)
-#               self.logger.experiment.log_image(image=comparison2, artifact_file="reconstruction2_val{}.png".format(self.current_epoch), run_id=self.logger.run_id)
-#               self.logger.experiment.log_image(image=comparison3, artifact_file="reconstruction3_val{}.png".format(self.current_epoch), run_id=self.logger.run_id)
+         if self.current_epoch % 10 == 0:
+            if x.size(0) == self.params.optimizer.batch_size:
+               comparison1, comparison2, comparison3 = self._shared_eval_step(batch, batch_idx)
+               self.logger.experiment.log_image(image=comparison1, artifact_file="reconstruction1_val{}.png".format(self.current_epoch), run_id=self.logger.run_id)
+               self.logger.experiment.log_image(image=comparison2, artifact_file="reconstruction2_val{}.png".format(self.current_epoch), run_id=self.logger.run_id)
+               self.logger.experiment.log_image(image=comparison3, artifact_file="reconstruction3_val{}.png".format(self.current_epoch), run_id=self.logger.run_id)
          return loss_dict
 
 
@@ -87,11 +87,11 @@ class AE(pl.LightningModule):
    def test_step(self, batch, batch_idx):
        x, ids = batch
        recon_x, mu, logvar, z = self(x) 
-#       if x.size(0) == self.params.optimizer.batch_size:
-#          comparison1, comparison2, comparison3 = self._shared_eval_step(batch, batch_idx)
-#          self.logger.experiment.log_image(image=comparison1, artifact_file="reconstruction1test{}.png".format(self.current_epoch), run_id=self.logger.run_id)
-#          self.logger.experiment.log_image(image=comparison2, artifact_file="reconstruction2test{}.png".format(self.current_epoch), run_id=self.logger.run_id)
-#          self.logger.experiment.log_image(image=comparison3, artifact_file="reconstruction3test{}.png".format(self.current_epoch), run_id=self.logger.run_id)
+       if x.size(0) == self.params.optimizer.batch_size:
+          comparison1, comparison2, comparison3 = self._shared_eval_step(batch, batch_idx)
+          self.logger.experiment.log_image(image=comparison1, artifact_file="reconstruction1test{}.png".format(self.current_epoch), run_id=self.logger.run_id)
+          self.logger.experiment.log_image(image=comparison2, artifact_file="reconstruction2test{}.png".format(self.current_epoch), run_id=self.logger.run_id)
+          self.logger.experiment.log_image(image=comparison3, artifact_file="reconstruction3test{}.png".format(self.current_epoch), run_id=self.logger.run_id)
        return dict(**{"ids":ids, "z":z.cpu()}) 
 
    def test_epoch_end(self, outputs):
