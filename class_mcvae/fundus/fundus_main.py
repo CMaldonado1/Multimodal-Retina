@@ -61,11 +61,8 @@ def ml_model1_trainer(config):
      dm_ae = get_datamodule(config)
      ae_fundus_args = get_eye_args(config)
      ae_fundus = VAE_FUNDUS(**ae_fundus_args)
-     ckpt= torch.load("/cmaldonado/multimodal_retina/Multimodal-Retina/mlruns/2/7fb3cb89c1774154be729a1289178f5f/checkpoints/epoch=34-step=78224.ckpt", map_location= torch.device('cuda:0'))
-     _model_pretrained_weights = {k.replace("model.", ""): v for k, v in ckpt['state_dict'].items()} 
      model1 = AE(ae_fundus, config)
-     model1.model.load_state_dict(_model_pretrained_weights)
-     trainer_ae = pl.Trainer(accelerator="gpu", devices=1, callbacks=[EarlyStopping(monitor="avg_total_loss_validation", mode="min", patience=10)], max_epochs=0)
+     trainer_ae = pl.Trainer(accelerator="gpu", devices=1, callbacks=[EarlyStopping(monitor="avg_total_loss_validation", mode="min", patience=10)], max_epochs=-1)
      return dm_ae, model1, trainer_ae
 
 
