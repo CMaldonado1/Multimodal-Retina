@@ -76,11 +76,11 @@ def ml_model2_trainer(config):
      fundus_class = classifier_FUNDUS(**class_fundus_args)
      classifiers = vae_classifier_fundus(fundus_vae, fundus_class)
      ckpt= torch.load(config.pretrained_model, map_location= torch.device('cuda:0'))
-     _model_pretrained_weights = {k.replace("model.", "vae_fundus."): v for k, v in ckpt['state_dict'].items()} #if "fc"  in k}
+     _model_pretrained_weights = {k.replace("model.", ""): v for k, v in ckpt['state_dict'].items()} #if "fc"  in k}
      model2 =  AE(classifiers, config)
-     model2.model.load_state_dict(_model_pretrained_weights, strict=False)
+     model2.model.load_state_dict(_model_pretrained_weights) #, strict=False)
      early_stopping_callback = [EarlyStopping(monitor="avg_total_loss_val", mode='min',  patience=15)]  #, ModelSummary(max_depth=-1)]
-     trainer = pl.Trainer(accelerator="gpu", callbacks=early_stopping_callback, devices=1, num_nodes=1, max_epochs=-1)  
+     trainer = pl.Trainer(accelerator="gpu", callbacks=early_stopping_callback, devices=1, num_nodes=1, max_epochs=0)  
      return dm_vae, model2, trainer #, trainer_right
 
 
@@ -149,7 +149,7 @@ def main(config):
          #trainer_ae.fit(model1, datamodule=dm_ae)  
          trainer.fit(model2, datamodule=dm_vae)
          
-      trainer.test(model2, datamodule=dm_vae)# , trainer=trainer)
+      trainer.test(model2, datamodule=dm_vae) #, inference_mode=False)# , trainer=trainer)
 #      trainer.predict(model2, datamodule=dm_classification)
 #      trainer_ae.test(model1, datamodule=dm_ae)
 

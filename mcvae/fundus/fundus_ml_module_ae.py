@@ -5,6 +5,8 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import sys
+from torchvision import transforms
 import torch.nn.functional as F
 import torch.nn as nn
 from IPython import embed
@@ -56,46 +58,51 @@ class AE(pl.LightningModule):
 
    def validation_step(self, batch, batch_idx):
          x, _ = batch
-         recon_x, mu, logvar, z = self(x)
-         w=0.0002
-         w_kld = self.update_kl(w, self.current_epoch)
-         MSE = self.mse(recon_x, x, reduction='mean')
-         KLD = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
-         val_loss = MSE + KLD*w_kld 
-         loss_dict = {"Total_loss": val_loss.detach(), "MSE_loss": MSE.detach(), "KLD": KLD*w_kld}
+         recon_x = self(x)
+#         w=0.0002
+#         w_kld = self.update_kl(w, self.current_epoch)
+#         MSE = self.mse(recon_x, x, reduction='mean')
+#         KLD = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+#         val_loss = MSE + KLD*w_kld 
+#         loss_dict = {"Total_loss": val_loss.detach(), "MSE_loss": MSE.detach(), "KLD": KLD*w_kld}
 #         if self.current_epoch % 10 == 0:
 #            if x.size(0) == self.params.optimizer.batch_size:
 #               comparison1, comparison2, comparison3 = self._shared_eval_step(batch, batch_idx)
 #               self.logger.experiment.log_image(image=comparison1, artifact_file="reconstruction1_val{}.png".format(self.current_epoch), run_id=self.logger.run_id)
 #               self.logger.experiment.log_image(image=comparison2, artifact_file="reconstruction2_val{}.png".format(self.current_epoch), run_id=self.logger.run_id)
 #               self.logger.experiment.log_image(image=comparison3, artifact_file="reconstruction3_val{}.png".format(self.current_epoch), run_id=self.logger.run_id)
-         return loss_dict
+#         return loss_dict
 
 
-   def validation_epoch_end(self, outputs):
-         avg_total_loss = torch.stack([x["Total_loss"] for x in outputs]).mean()
-         avg_mse_loss = torch.stack([x["MSE_loss"] for x in outputs]).mean()
-         avg_kdl_loss = torch.stack([x["KLD"] for x in outputs]).mean()
+#   def validation_epoch_end(self, outputs):
+#         avg_total_loss = torch.stack([x["Total_loss"] for x in outputs]).mean()
+#         avg_mse_loss = torch.stack([x["MSE_loss"] for x in outputs]).mean()
+#         avg_kdl_loss = torch.stack([x["KLD"] for x in outputs]).mean()
 
-         self.log_dict(
-            {"avg_total_loss_validation":avg_total_loss, "avg_MSE_loss_validation": avg_mse_loss,"avg_kdl_loss_validation":avg_kdl_loss },
-            on_epoch=True,
-            prog_bar=True,
-            logger=True,
-          )
+#         self.log_dict(
+#            {"avg_total_loss_validation":avg_total_loss, "avg_MSE_loss_validation": avg_mse_loss,"avg_kdl_loss_validation":avg_kdl_loss },
+#            on_epoch=True,
+#            prog_bar=True,
+#            logger=True,
+#          )
 
    def test_step(self, batch, batch_idx):
+       torch.set_grad_enabled(True)
        x, ids = batch
-       recon_x, mu, logvar, z = self(x) 
+       recon_x = self(x)
+       x_ = self.tensor_to_pil(x)
+       vae_grad_cam = VAEGradCAM(self, self.model.decoder_layers[-3])
+       heatmap = vae_grad_cam.generate_heatmap(x)
+       vae_grad_cam.save_heatmap(heatmap, x_, f'path_to_save_heatmap_image_{ids}.png')
 #       if x.size(0) == self.params.optimizer.batch_size:
 #          comparison1, comparison2, comparison3 = self._shared_eval_step(batch, batch_idx)
 #          self.logger.experiment.log_image(image=comparison1, artifact_file="reconstruction1test{}.png".format(self.current_epoch), run_id=self.logger.run_id)
 #          self.logger.experiment.log_image(image=comparison2, artifact_file="reconstruction2test{}.png".format(self.current_epoch), run_id=self.logger.run_id)
 #          self.logger.experiment.log_image(image=comparison3, artifact_file="reconstruction3test{}.png".format(self.current_epoch), run_id=self.logger.run_id)
-       return dict(**{"ids":ids, "z":z.cpu()}) 
+       return dict(**{"ids":ids}) #, "z":z.cpu()}) 
 
-   def test_epoch_end(self, outputs):
-        self._log_z_vectors(outputs, "latent_vector_test.xlsx")
+#   def test_epoch_end(self, outputs):
+#        self._log_z_vectors(outputs, "latent_vector_test.xlsx")
 
    def _shared_eval_step(self, batch, batch_idx):
          x, _ = batch
@@ -161,6 +168,14 @@ class AE(pl.LightningModule):
        w = t_kl
     return w
 
+   def tensor_to_pil(self, tensor):
+    # If batch dimension is present, remove it
+     if tensor.ndimension() == 4:
+        tensor = tensor.squeeze(0)
+    # Convert tensor to PIL Image
+     transform = transforms.ToPILImage()
+     return transform(tensor)
+
 
 
    def configure_optimizers(self):
@@ -170,3 +185,63 @@ class AE(pl.LightningModule):
          parameters = vars(self.params.optimizer.parameters)
          optimizer = algorithm(self.model.parameters(), **parameters)
          return optimizer
+
+class VAEGradCAM:
+    def __init__(self, model, target_layer):
+        self.model = model
+        self.target_layer = target_layer
+        self.gradients = None
+        self.activations = None
+        self.hook_layers()
+
+    def hook_layers(self):
+        def forward_hook(module, input, output):
+            self.activations = output
+
+        def backward_hook(module, grad_in, grad_out):
+            self.gradients = grad_out[0]
+
+        self.target_layer.register_forward_hook(forward_hook)
+        self.target_layer.register_backward_hook(backward_hook)
+
+    def generate_heatmap(self, input_tensor):
+        self.model.eval()
+        output = self.model(input_tensor)
+        recon_x = output
+
+        # Define a scalar loss to backpropagate
+        loss = F.mse_loss(recon_x, input_tensor)
+
+        self.model.zero_grad()
+        loss.backward()
+
+        pooled_gradients = torch.mean(self.gradients, dim=[0, 2, 3])
+        activations = self.activations.detach()
+
+        for i in range(activations.shape[1]):
+            activations[:, i, :, :] *= pooled_gradients[i]
+
+        heatmap = torch.mean(activations, dim=1).squeeze()
+        heatmap = F.relu(heatmap)
+        heatmap /= torch.max(heatmap)
+
+        return heatmap.cpu().numpy()
+
+    def save_heatmap(self, heatmap, img, path):
+        heatmap = np.uint8(255 * heatmap)
+        heatmap = Image.fromarray(heatmap)
+        heatmap = heatmap.resize(img.size, Image.ANTIALIAS)
+        heatmap = np.array(heatmap)
+
+        heatmap_img = Image.fromarray(heatmap).convert("RGB")
+
+        # Convert img to array if it's a PIL image
+        if isinstance(img, Image.Image):
+            img = np.array(img)
+
+        # Overlay heatmap on the original image
+        plt.imshow(img)
+        plt.imshow(heatmap, alpha=0.5, cmap='jet')
+        # Save the image
+        plt.savefig(path, bbox_inches='tight', pad_inches=0)
+        plt.close()

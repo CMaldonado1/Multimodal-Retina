@@ -17,6 +17,7 @@ from PIL import Image
 from torchvision import transforms
 import cv2
 from sklearn.model_selection import StratifiedKFold
+from  sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 
 def scalRadius(img, scale):
     x = img[int(img.shape[0]/2),:,:].sum(1)
@@ -27,7 +28,7 @@ def scalRadius(img, scale):
     return cv2.resize(img, (0,0), fx=s, fy=s)
 
 
-def load_img(dir_img):
+def load_img_fundus(dir_img):
     scale = 300
     a = np.load(dir_img)
     a = scalRadius(a,scale)
@@ -38,7 +39,14 @@ def load_img(dir_img):
     img = Image.fromarray(np.array(a, dtype=np.int8), "RGB")
     return img
 
-class fundus(data.Dataset):
+def load_img_oct(img_path):
+     oct_array = np.load(img_path)
+     oct_img = torch.from_numpy(oct_array.astype('float32'))  # .item().volume).astype('float32'))
+     oct_img_resized = F.resize(oct_img,(224,224))
+     oct_img_resized = oct_img_resized[0:128] #0:10]   #nlayer]
+     return oct_img_resized
+
+class retina(data.Dataset):
     """ Multi-Modal Dataset.
         Args:
         dir_imgs (string): Root directory of dataset where images exist.
@@ -48,36 +56,50 @@ class fundus(data.Dataset):
     """
 
     def __init__(self,
-                dir_imgs_left,
+                dir_imgs_fundus,
+                dir_imgs_oct,
                 ids_set
                 ):
-
-        self.labels = []        
-        self.path_imgs_fundus_left = []
+        self.path_imgs_fundus = []
+        self.path_imgs_oct = []
+        self.labels = []
         self.ids = []
         ids_set = ids_set.reset_index(drop=True)
+        self.dir_imgs_fundus = dir_imgs_fundus
+        self.dir_imgs_oct = dir_imgs_oct
+        le = OrdinalEncoder()
+        diagnoses = le.fit_transform(ids_set['label'].values.reshape(-1,1))
+
         for idx, ID in enumerate(ids_set['IDs'].values):
 
             # Reading all oct images per patient
-            imgs_per_id_left = glob.glob(dir_imgs_left + '/*.npy')
-            img_fundus_left = [j for j in imgs_per_id_left if str(int(ID)) in j]
-            if img_fundus_left:
-                imgs_per_id_left = str(img_fundus_left[0])
-                self.path_imgs_fundus_left.append(imgs_per_id_left)
-        #        self.labels.append(diagnoses[idx])
-                self.ids.append(imgs_per_id_left.split('/')[-1].split('_')[1]) 
+            imgs_per_id_fundus = glob.glob(self.dir_imgs_fundus + '/*.npy')
+            img_fundus = [j for j in imgs_per_id_fundus if str(int(ID)) in j]
+
+            imgs_per_id_oct = glob.glob(self.dir_imgs_oct + '/*.npy')
+            img_oct = [j for j in imgs_per_id_oct if str(int(ID)) in j]
+            if img_fundus:
+                imgs_per_id_ = str(img_fundus[0])
+                self.path_imgs_fundus.append(imgs_per_id_)
+                self.labels.append(diagnoses[idx])
+                self.ids.append(imgs_per_id_.split('/')[-1].split('_')[1])
             else:
                 continue
-        
+            if img_oct:
+                imgs_per_id__ = str(img_oct[0])
+                self.path_imgs_oct.append(imgs_per_id__)
+            else:
+                continue
+
         self.transform_fundus = transforms.Compose([
-                transforms.Resize((224, 224)),
+                transforms.Resize((224, 224), antialias=True),
                 transforms.ToTensor(),
             ])
 
             
     # Denotes the total number of samples
     def __len__(self):
-        return len(self.path_imgs_fundus_left) # self.num_parti
+        return len(self.path_imgs_fundus) # self.num_parti
 
     # This generates one sample of data
     def __getitem__(self, index):
@@ -87,10 +109,12 @@ class fundus(data.Dataset):
         Returns:
             tuple: (oct, label)
         """
-        fundus = load_img(self.path_imgs_fundus_left[index])
+        fundus = load_img_fundus(self.path_imgs_fundus[index])
         fundus_left = self.transform_fundus(fundus)
-        fundus_imag_left = (fundus_left - torch.min(fundus_left))/(torch.max(fundus_left) - torch.min(fundus_left)) # Normalize between 0 and 1
-        return fundus_imag_left, self.ids[index]
+        fundus_imag_left = (fundus_left - torch.min(fundus_left))/(torch.max(fundus_left) - torch.min(fundus_left))
+        oct_left = load_img_oct(self.path_imgs_oct[index])
+        oct_imag_left = (oct_left - torch.min(oct_left))/(torch.max(oct_left) - torch.min(oct_left))
+        return fundus_imag_left, oct_imag_left, self.ids[index], self.labels[index]
 #        else:
 #           return None
 
@@ -118,15 +142,17 @@ class StratifiedBatchSampler:
         return len(self.n_batches)  #y)
 
 
-class fundus_DM(pl.LightningDataModule):    
+class retina_DM(pl.LightningDataModule):    
         
     def __init__(self, 
-        data_dir_left: Union[None, str] = None,
+        data_dir_fundus: Union[None, str] = None,
+        data_dir_oct: Union[None, str] = None,
         include_ids: Union[None, List[int], str] = None,
         exclude_ids: Union[None, List[int], str] = None,
         split_lengths: Union[None, List[int]]=None,
         shuffle=False,
-        img_size: Union[None, List[int], str] = None,
+        img_size_fundus: Union[None, List[int], str] = None,
+        img_size_oct: Union[None, List[int], str] = None,
         batch_size: Union[None, int] = None
     ):
 
@@ -138,7 +164,8 @@ class fundus_DM(pl.LightningDataModule):
         '''
         
         super().__init__()
-        self.data_dir_left = data_dir_left
+        self.data_dir_fundus = data_dir_fundus
+        self.data_dir_oct = data_dir_oct
         self.include_ids = include_ids
         ## generate list of individuals to include
         if include_ids is not None and isinstance(include_ids, list):
@@ -154,7 +181,6 @@ class fundus_DM(pl.LightningDataModule):
         self.batch_size = batch_size
         self.split_lengths = split_lengths
         self.shuffle = shuffle
-        self.img_size = img_size
 
 
     def my_collate(self, batch):
@@ -172,15 +198,15 @@ class fundus_DM(pl.LightningDataModule):
         # read images
         #
         # TODO: add logic for exclude_ids
-        imgs = fundus(self.data_dir_left, self.include_ids)
+        imgs = retina(self.data_dir_fundus, self.data_dir_oct, self.include_ids)
         print('Found' + str(len(imgs)) + ' fundus images')
 #        embed()
 
         
         if self.split_lengths is None:
             train_len = 0 #int(0.6 * len(imgs))
-            val_len = 2 #int(0.1 * len(imgs))
-            test_len = len(imgs) - train_len - val_len
+            val_len = 2 #int(1 * len(imgs))
+            test_len = len(imgs) - train_len - val_len  #len(imgs) - train_len - test_len
             self.split_lengths = [train_len, val_len, test_len]
 
         self.train_dataset, self.val_dataset, self.test_dataset = random_split(imgs, self.split_lengths)

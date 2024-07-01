@@ -105,4 +105,4 @@ class AE_fundus(nn.Module):
     def forward(self, x):
         z = self.encoder(x)
         x1 = self.decoder(z)
-        return x1, z
+        return x1

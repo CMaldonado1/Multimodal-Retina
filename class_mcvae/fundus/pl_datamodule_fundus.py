@@ -59,7 +59,7 @@ class fundus(data.Dataset):
         ids_set = ids_set.reset_index(drop=True)
         le = OrdinalEncoder()
         diagnoses = le.fit_transform(ids_set['label'].values.reshape(-1,1))
-        for idx, ID in enumerate(ids_set['eid'].values):
+        for idx, ID in enumerate(ids_set['IDs'].values):
 
             # Reading all oct images per patient
             imgs_per_id_left = glob.glob(dir_imgs_left + '/*.npy')
@@ -181,12 +181,13 @@ class fundus_DM(pl.LightningDataModule):
 
         
         if self.split_lengths is None:
-            train_len = int(0.8 * len(imgs))
-            val_len = len(imgs) - train_len
-            self.split_lengths = [train_len, val_len]
+            train_len = int(0 * len(imgs))
+            val_len = 100  
+            test_len = len(imgs) - train_len - val_len
+            self.split_lengths = [train_len, val_len, test_len]
 
-        self.train_dataset, self.val_dataset = random_split(imgs, self.split_lengths)
-        self.test_dataset = imgs
+        self.train_dataset, self.val_dataset, self.test_dataset = random_split(imgs, self.split_lengths)
+#        self.test_dataset = imgs
         
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=8, shuffle=self.shuffle, collate_fn=self.my_collate, drop_last=True )
