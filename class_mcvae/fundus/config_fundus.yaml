@@ -2,11 +2,14 @@
 
 # Seed
 seed: 1
-dir_imgs_ae: "/cmaldonado/multimodal_retina/data/cvd/fundus_21012/" 
+dir_imgs_ae: "/jmain02/home/J2AD014/mtc03/ccm69-mtc03/multimodal_retina/cvd/fundus_21012/" 
 ids_set: "/cmaldonado/multimodal_retina/data/csv/ids_classier_fundus_cvd.csv" 
-ids_set_class: "/cmaldonado//multimodal_retina/ids_classifier_cvds.csv"
+ids_set_class: "/jmain02/home/J2AD014/mtc03/ccm69-mtc03/multimodal_retina/ids_classifier_cvds.csv"
 
-pretrained_model: "/cmaldonado/multimodal_retina/Multimodal-Retina/mlruns/2/7fb3cb89c1774154be729a1289178f5f/checkpoints/epoch=34-step=78224.ckpt" 
+
+pretrained_model: "/jmain02/home/J2AD014/mtc03/ccm69-mtc03/multimodal_retina/1af72973695e45b18e34a99681eb1802/epoch=23-step=6383.ckpt"
+#36060f713d8f423189eb43c520bc7705/epoch=19-step=9299.ckpt"
+#pretrained_model: "/cmaldonado/multimodal_retina/Multimodal-Retina/mlruns/2/7fb3cb89c1774154be729a1289178f5f/checkpoints/epoch=34-step=78224.ckpt" 
 
 input_dim: 3 224 224 
 w_bce: 0.5 
