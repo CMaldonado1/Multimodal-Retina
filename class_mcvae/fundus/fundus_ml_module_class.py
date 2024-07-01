@@ -43,53 +43,53 @@ class AE(pl.LightningModule):
 
    def validation_step(self, batch, batch_idx):
          x, _, y = batch
-#         y_pred, recon_x = self(x)
-#         MSE, KLD = self.loss_vae( x, recon_x, mu, logvar, z)
-#         bce = self.loss_classifier(y_pred, y.float())
-#         val_loss = MSE + bce
-#         if self.current_epoch % 10 == 0:
-#            self.save_images(x, recon_x, mode='val')
-#         acc, precision, sensitivity, specificity, macro_roc_auc = evaluate_metrics(y_pred, y)   
-#         loss_dict = {"loss": val_loss.detach(), "MSE_loss": MSE.detach(), "KLD": KLD, "BCE":bce, "acc":acc, "precision":precision, "sensitivity":sensitivity, "specificity":specificity, "macro_roc_auc":macro_roc_auc}
-#         return loss_dict
+         y_pred, recon_x = self(x)
+         MSE, KLD = self.loss_vae( x, recon_x, mu, logvar, z)
+         bce = self.loss_classifier(y_pred, y.float())
+         val_loss = MSE + bce
+         if self.current_epoch % 10 == 0:
+            self.save_images(x, recon_x, mode='val')
+         acc, precision, sensitivity, specificity, macro_roc_auc = evaluate_metrics(y_pred, y)   
+         loss_dict = {"loss": val_loss.detach(), "MSE_loss": MSE.detach(), "KLD": KLD, "BCE":bce, "acc":acc, "precision":precision, "sensitivity":sensitivity, "specificity":specificity, "macro_roc_auc":macro_roc_auc}
+         return loss_dict
 
 
-#   def validation_epoch_end(self, outputs):
-#        evaluation_log_dict(self, outputs, mode='val')
+   def validation_epoch_end(self, outputs):
+        evaluation_log_dict(self, outputs, mode='val')
 
    def test_step(self, batch, batch_idx):
         torch.set_grad_enabled(True)
         x, ids, y = batch
         recon_x = self(x)
-#        acc, precision, sensitivity, specificity, macro_roc_auc = evaluate_metrics(y_pred, y)
-#        visualize_output(recon_x, x, ids)
+        acc, precision, sensitivity, specificity, macro_roc_auc = evaluate_metrics(y_pred, y)
+        visualize_output(recon_x, x, ids)
         explainer = shap.DeepExplainer(self.model.vae_fundus, x) #classifier_fundus, mu)
         shap_values = explainer.shap_values(x, check_additivity=False)
         shap.image_plot(shap_values, x[0:5])
         sys.exit()
-#        shap_df = pd.DataFrame(columns=[f"shap_{i}" for i in range(shap_values.shape[1])])
-#        for i in range(len(ids)):
-#            shap_df.loc[i] = shap_values[i].flatten()
-#        shap_df['ids'] = list(ids)
-#        csv_file = 'shap_values.csv'
-#        if os.path.exists(csv_file):
-#           existing_df = pd.read_csv(csv_file)
-#           updated_df = pd.concat([existing_df, shap_df])
-#        else:
-#           updated_df = shap_df
-#    
-#        updated_df.to_csv(csv_file, index=False)
+        shap_df = pd.DataFrame(columns=[f"shap_{i}" for i in range(shap_values.shape[1])])
+        for i in range(len(ids)):
+            shap_df.loc[i] = shap_values[i].flatten()
+        shap_df['ids'] = list(ids)
+        csv_file = 'shap_values.csv'
+        if os.path.exists(csv_file):
+           existing_df = pd.read_csv(csv_file)
+           updated_df = pd.concat([existing_df, shap_df])
+        else:
+           updated_df = shap_df
+    
+        updated_df.to_csv(csv_file, index=False)
 
-#        if mu.shape == torch.Size([4, 2048]):
+        if mu.shape == torch.Size([4, 2048]):
         return {"ids": ids, "z": mu.cpu(), "acc": acc, "precision": precision, "sensitivity": sensitivity, "specificity": specificity, "macro_roc_auc": macro_roc_auc}
-#        else:
-#            raise ValueError(f"mu has unexpected shape: {mu.shape}")
+        else:
+            raise ValueError(f"mu has unexpected shape: {mu.shape}")
 
    def test_epoch_end(self, outputs):
-#        torch.set_grad_enabled(True)
+        torch.set_grad_enabled(True)
         _log_z_vectors(self, outputs, "latent_vector_test.xlsx")
         evaluation_log_dict(self, outputs, mode='test')
-#        __shap__(self, outputs)
+        __shap__(self, outputs)
 
 
    def _shared_eval_step(self, x,x_recon):
