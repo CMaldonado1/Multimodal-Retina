@@ -116,9 +116,8 @@ class VAE_FUNDUS(nn.Module):
 
     def forward(self, x):
         z, mu, logvar = self.encoder(x)
-#        modified_latent = self.sample_single_latent_component(mu, 59, 0.2)
         x1 = self.decoder(z) #modified_latent)
-        return x1.view(x1.size(0), -1).mean(dim=1) #, z, modified_latent, logvar
+        return x1, z, mu, logvar
 
 class classifier_FUNDUS(nn.Module):
 
@@ -149,5 +148,5 @@ class vae_classifier_fundus(nn.Module):
 
     def forward(self, x):
         x1 = self.vae_fundus(x)
-#        prediction =self.classifier_fundus(z)
-        return x1 #, z, mu, logvar
+        prediction =self.classifier_fundus(z)
+        return x1, z, mu, logvar
