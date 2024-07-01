@@ -119,7 +119,7 @@ def ml_model_trainer(config):
     model2 = mcvae(retina_mcvae, config)
 
     early_stopping_callback = EarlyStopping(monitor="avg_total_loss_val", mode='min', patience=5)
-    trainer = pl.Trainer(accelerator="gpu", callbacks=[early_stopping_callback], devices=1, num_nodes=1, max_epochs=0)
+    trainer = pl.Trainer(accelerator="gpu", callbacks=[early_stopping_callback], devices=1, num_nodes=1, max_epochs=-1)
     
     return dm_vae, model2, trainer
 
